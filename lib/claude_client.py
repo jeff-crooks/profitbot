@@ -1,10 +1,31 @@
 import os
+import re
 from pathlib import Path
 import anthropic
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".env.secrets")
-load_dotenv(Path(__file__).parent.parent / ".env")
+
+def _load_shell_env_file(path: Path) -> None:
+    """Parse files using `export KEY="value"` shell syntax that load_dotenv can't handle."""
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("#") or not line:
+            continue
+        # Strip leading `export ` if present
+        line = re.sub(r"^export\s+", "", line)
+        if "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        # Strip surrounding quotes
+        value = value.strip().strip('"').strip("'")
+        if key:
+            os.environ[key] = value
+
+
+_load_shell_env_file(Path.home() / ".env.secrets")
+load_dotenv(Path(__file__).parent.parent / ".env", override=False)
 
 _client = None
 
