@@ -11,7 +11,7 @@ from lib.browser import BrowserSession, human_delay, human_type
 
 EMAIL = "jeffcrooks.ai@gmail.com"
 LANDING_URL_FILE = Path("landing_url.txt")
-CONVERTKIT_URL = "https://app.convertkit.com"
+CONVERTKIT_URL = "https://app.kit.com"
 
 WELCOME_EMAIL_SUBJECT = "Your free prompts are here 🎯"
 SEQUENCE_EMAILS = [
@@ -61,7 +61,7 @@ SEQUENCE_EMAILS = [
 
 def attempt_convertkit_signup(page) -> bool:
     """Returns True if signup succeeded, raises ManualInterventionRequired if verification needed."""
-    page.goto("https://app.convertkit.com/users/signup", wait_until="networkidle")
+    page.goto(f"{CONVERTKIT_URL}/users/signup", wait_until="domcontentloaded", timeout=60000)
     human_delay()
 
     if "dashboard" in page.url or "subscribers" in page.url:

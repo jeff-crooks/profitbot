@@ -1,6 +1,13 @@
+import os
 import random
 import time
+from pathlib import Path
 from playwright.sync_api import sync_playwright, Page
+
+# Ensure extracted system libs are on the path (needed when running from cron or non-login shells)
+_LIBS = str(Path.home() / "libs/extracted/usr/lib/x86_64-linux-gnu")
+if _LIBS not in os.environ.get("LD_LIBRARY_PATH", ""):
+    os.environ["LD_LIBRARY_PATH"] = _LIBS + ":" + os.environ.get("LD_LIBRARY_PATH", "")
 
 
 def human_delay(min_s: float = 2.0, max_s: float = 6.0) -> None:
@@ -34,6 +41,7 @@ class BrowserSession:
     )
 
     def __init__(self, headless: bool = True):
+        self._pw_cm = None
         self._pw = None
         self._browser = None
         self._context = None
@@ -41,7 +49,8 @@ class BrowserSession:
         self.page = None
 
     def __enter__(self) -> "BrowserSession":
-        self._pw = sync_playwright().__enter__()
+        self._pw_cm = sync_playwright()
+        self._pw = self._pw_cm.__enter__()
         self._browser = self._pw.chromium.launch(headless=self._headless)
         self._context = self._browser.new_context(user_agent=self.USER_AGENT)
         self.page = self._context.new_page()
@@ -52,8 +61,8 @@ class BrowserSession:
             self._context.close()
         if self._browser:
             self._browser.close()
-        if self._pw:
-            self._pw.__exit__(*args)
+        if self._pw_cm:
+            self._pw_cm.__exit__(*args)
 
     def navigate(self, url: str) -> None:
         self.page.goto(url, wait_until="networkidle", timeout=30000)
