@@ -36,16 +36,20 @@ class BrowserSession:
     def __init__(self, headless: bool = True):
         self._pw = None
         self._browser = None
+        self._context = None
+        self._headless = headless
         self.page = None
 
     def __enter__(self) -> "BrowserSession":
         self._pw = sync_playwright().__enter__()
-        self._browser = self._pw.chromium.launch(headless=True)
-        context = self._browser.new_context(user_agent=self.USER_AGENT)
-        self.page = context.new_page()
+        self._browser = self._pw.chromium.launch(headless=self._headless)
+        self._context = self._browser.new_context(user_agent=self.USER_AGENT)
+        self.page = self._context.new_page()
         return self
 
     def __exit__(self, *args) -> None:
+        if self._context:
+            self._context.close()
         if self._browser:
             self._browser.close()
         if self._pw:
