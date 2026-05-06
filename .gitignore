@@ -9,3 +9,4 @@ logs/
 manual_work.md
 landing_url.txt
 compliance_notes.txt
+.pytest_cache/
