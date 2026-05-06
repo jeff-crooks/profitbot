@@ -1,0 +1,11 @@
+.env
+state.json
+__pycache__/
+*.pyc
+validation/
+prompts/
+assets/
+logs/
+manual_work.md
+landing_url.txt
+compliance_notes.txt
