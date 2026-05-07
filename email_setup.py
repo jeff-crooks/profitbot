@@ -1,161 +1,166 @@
 #!/usr/bin/env python3
-"""Phase 2: ConvertKit account setup and email funnel."""
+"""Phase 2: Kit (ConvertKit) funnel setup via API."""
 
+import os
 import re
-import time
 from pathlib import Path
 
-from lib.state import load, save, mark_phase_complete, is_phase_complete
+import requests
+
+from lib.claude_client import _load_shell_env_file
 from lib.manual import log_item, ManualInterventionRequired
-from lib.browser import BrowserSession, human_delay, human_type
+from lib.state import load, save, mark_phase_complete, is_phase_complete
 
-EMAIL = "jeffcrooks.ai@gmail.com"
+_load_shell_env_file(Path.home() / ".env.secrets")
+
+KIT_API_KEY = os.environ.get("KIT_API_KEY", "")
+KIT_BASE = "https://api.kit.com/v4"
 LANDING_URL_FILE = Path("landing_url.txt")
-CONVERTKIT_URL = "https://app.kit.com"
 
-WELCOME_EMAIL_SUBJECT = "Your free prompts are here 🎯"
+SEQUENCE_NAME = "Recruiter Outreach Nurture"
 SEQUENCE_EMAILS = [
     {
-        "day": 1,
         "subject": "One quick tip to double your reply rate",
-        "body": (
+        "content": (
             "Hey {{subscriber.first_name | default: 'there'}},\n\n"
             "Yesterday you grabbed the free prompt pack. Here's a tip that gets 2-3x more replies:\n\n"
             "Always personalize the first line. Reference something specific about their company or recent news.\n\n"
             "The full pack (50 prompts + follow-up sequences) has a whole category dedicated to this: "
-            "[grab it here — link to product].\n\nTalk soon,"
+            "grab it here — [product link].\n\nTalk soon,\nDanielle"
         ),
+        "delay_value": 1,
+        "delay_unit": "days",
     },
     {
-        "day": 3,
         "subject": "How Sarah booked 12 interviews in one week",
-        "body": (
+        "content": (
             "Hey {{subscriber.first_name | default: 'there'}},\n\n"
             "Sarah is a recruiter who was struggling with response rates under 5%.\n\n"
             "She started using structured prompt templates and hit 18% reply rate in her first week.\n\n"
             "The difference? Consistency + personalization at scale. "
-            "The full prompt pack gives you the exact framework: [product link].\n\nBest,"
+            "The full prompt pack gives you the exact framework: [product link].\n\nBest,\nDanielle"
         ),
+        "delay_value": 3,
+        "delay_unit": "days",
     },
     {
-        "day": 5,
         "subject": "Still sending emails that get ignored?",
-        "body": (
+        "content": (
             "Hey {{subscriber.first_name | default: 'there'}},\n\n"
             "The #1 reason cold emails fail: generic openers.\n\n"
             "The full 50-prompt pack fixes that. Use code LAUNCH20 for 20% off: [product link]\n\n"
-            "This offer expires in 48 hours."
+            "This offer expires in 48 hours.\n\nDanielle"
         ),
+        "delay_value": 5,
+        "delay_unit": "days",
     },
     {
-        "day": 7,
         "subject": "Last chance — LAUNCH20 expires tonight",
-        "body": (
+        "content": (
             "Hey {{subscriber.first_name | default: 'there'}},\n\n"
             "Final reminder: use LAUNCH20 at checkout for 20% off the full 50-prompt pack.\n\n"
-            "[product link]\n\nAfter tonight, it's back to full price."
+            "[product link]\n\nAfter tonight, it's back to full price.\n\nDanielle"
         ),
+        "delay_value": 7,
+        "delay_unit": "days",
     },
 ]
 
 
-def attempt_convertkit_signup(page) -> bool:
-    """Returns True if signup succeeded, raises ManualInterventionRequired if verification needed."""
-    page.goto(f"{CONVERTKIT_URL}/users/signup", wait_until="domcontentloaded", timeout=60000)
-    human_delay()
-
-    if "dashboard" in page.url or "subscribers" in page.url:
-        print("Already logged into ConvertKit.")
-        return True
-
-    try:
-        human_type(page, 'input[name="user[email]"]', EMAIL)
-        human_delay(1, 2)
-
-        if page.query_selector('input[name="user[first_name]"]'):
-            state = load()
-            persona = state.get("persona", {})
-            name = persona.get("name", "Alex Morgan").split()[0]
-            human_type(page, 'input[name="user[first_name]"]', name)
-            human_delay()
-
-        page.click('button[type="submit"], input[type="submit"]')
-        human_delay(3, 5)
-
-        if page.query_selector("iframe[src*='recaptcha'], .h-captcha"):
-            log_item(
-                "ConvertKit CAPTCHA",
-                f"Complete the CAPTCHA at {page.url} in a browser, then re-run.",
-                "email_setup.py",
-            )
-            raise ManualInterventionRequired("CAPTCHA on ConvertKit signup")
-
-        if any(phrase in page.content().lower() for phrase in ["check your email", "verify your email", "confirmation email"]):
-            log_item(
-                "ConvertKit email verification required",
-                f"Check jeffcrooks.ai@gmail.com for a ConvertKit verification email and click the link. Then re-run: python email_setup.py",
-                "email_setup.py",
-            )
-            raise ManualInterventionRequired("Email verification required")
-
-        return True
-    except ManualInterventionRequired:
-        raise
-    except Exception as e:
-        log_item(
-            f"ConvertKit signup error: {e}",
-            f"Manually create a ConvertKit account at https://convertkit.com with {EMAIL}, then save credentials to .env as CONVERTKIT_EMAIL and CONVERTKIT_PASSWORD, then re-run.",
-            "email_setup.py",
-        )
-        raise ManualInterventionRequired(str(e))
+def kit_headers() -> dict:
+    return {"X-Kit-Api-Key": KIT_API_KEY, "Accept": "application/json", "Content-Type": "application/json"}
 
 
-def create_landing_page(page, niche: str, free_pdf_path: str) -> str:
-    """Creates a landing page and returns its URL."""
-    page.goto(f"{CONVERTKIT_URL}/landing_pages", wait_until="networkidle")
-    human_delay(2, 4)
+def kit_get(path: str) -> dict:
+    r = requests.get(f"{KIT_BASE}{path}", headers=kit_headers())
+    r.raise_for_status()
+    return r.json()
 
-    new_btn = page.query_selector('a[href*="new"], button:has-text("New"), button:has-text("Create")')
-    if new_btn:
-        new_btn.click()
-        human_delay(2, 4)
+
+def kit_post(path: str, data: dict) -> dict:
+    r = requests.post(f"{KIT_BASE}{path}", headers=kit_headers(), json=data)
+    r.raise_for_status()
+    return r.json()
+
+
+def verify_api_key() -> None:
+    if not KIT_API_KEY:
+        raise RuntimeError("KIT_API_KEY not set in ~/.env.secrets")
+    account = kit_get("/account")
+    print(f"Kit account: {account['account']['name']} ({account['account']['primary_email_address']})")
+
+
+def ensure_sequence() -> int:
+    """Returns sequence ID, creating it if it doesn't exist."""
+    sequences = kit_get("/sequences").get("sequences", [])
+    for seq in sequences:
+        if seq["name"] == SEQUENCE_NAME:
+            print(f"Sequence already exists: id={seq['id']}")
+            return seq["id"]
+
+    seq = kit_post("/sequences", {"name": SEQUENCE_NAME})["sequence"]
+    print(f"Created sequence: id={seq['id']}")
+    return seq["id"]
+
+
+def ensure_sequence_emails(seq_id: int) -> None:
+    """Adds emails to the sequence if not already present."""
+    existing = kit_get(f"/sequences/{seq_id}/emails").get("emails", [])
+    existing_subjects = {e["subject"] for e in existing}
+
+    for email in SEQUENCE_EMAILS:
+        if email["subject"] in existing_subjects:
+            print(f"  Email already exists: {email['subject']}")
+            continue
+        result = kit_post(f"/sequences/{seq_id}/emails", email)
+        print(f"  Created email: day={email['delay_value']} — {email['subject']}")
+
+
+def ensure_landing_url(niche: str) -> str:
+    """Returns landing URL from file, or logs manual item and raises."""
+    if LANDING_URL_FILE.exists():
+        url = LANDING_URL_FILE.read_text().strip()
+        if url:
+            print(f"Landing URL: {url}")
+            return url
 
     log_item(
-        "ConvertKit landing page creation",
+        "Kit landing page required",
         (
-            f"In ConvertKit, create a new landing page with:\n"
-            f"  - Title: 'Get 10 Free {niche} Outreach Prompts'\n"
-            f"  - Headline: 'Boost Your Reply Rate With These 10 Free Templates'\n"
-            f"  - Add the free PDF ({free_pdf_path}) as an incentive/download\n"
-            f"  - Save the landing page URL to landing_url.txt\n"
-            f"  Then re-run: python email_setup.py"
+            f"The Kit API does not support creating landing pages — use the UI:\n"
+            f"1. Go to https://app.kit.com/landing_pages/new\n"
+            f"2. Choose any template\n"
+            f"3. Set headline: 'Get 10 Free {niche} Prompts'\n"
+            f"4. Set subheadline: 'Boost your reply rate with these ready-to-use templates'\n"
+            f"5. Under Incentive, upload: assets/free-sample-pack.pdf\n"
+            f"6. Connect sequence: '{SEQUENCE_NAME}'\n"
+            f"7. Publish and copy the URL\n"
+            f"8. Run: echo 'YOUR_URL' > landing_url.txt\n"
+            f"9. Re-run: python email_setup.py"
         ),
         "email_setup.py",
     )
-    raise ManualInterventionRequired("Manual landing page creation required")
+    raise ManualInterventionRequired("Landing page must be created in Kit UI")
 
 
 def run_email_setup() -> None:
+    verify_api_key()
+
     state = load()
     niche = state.get("niche") or "Recruiter Cold Outreach"
 
-    with BrowserSession() as session:
-        page = session.page
+    seq_id = ensure_sequence()
+    ensure_sequence_emails(seq_id)
+    state["kit_sequence_id"] = seq_id
+    save(state)
 
-        attempt_convertkit_signup(page)
+    landing_url = ensure_landing_url(niche)
 
-        if LANDING_URL_FILE.exists():
-            landing_url = LANDING_URL_FILE.read_text().strip()
-            print(f"Landing URL already captured: {landing_url}")
-        else:
-            landing_url = create_landing_page(page, niche, str(Path("assets/free-sample-pack.pdf")))
-            LANDING_URL_FILE.write_text(landing_url)
-
-        state["landing_url"] = landing_url
-        save(state)
+    state["landing_url"] = landing_url
+    save(state)
 
     mark_phase_complete(2)
-    print(f"\nPhase 2 complete. Landing URL: {landing_url}")
+    print(f"\nPhase 2 complete. Sequence ID: {seq_id}, Landing URL: {landing_url}")
 
 
 if __name__ == "__main__":
