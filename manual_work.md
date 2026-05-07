@@ -92,3 +92,61 @@ Genuinely curious what's working out there right now.
 After posting, paste the post URL back and run: python3 distribute.py
 **Re-run:** `python distribute.py`
 **Status:** PENDING
+
+## [2026-05-07 01:45] Reddit warmup post Day 2 — r/recruiting
+**Action required:** Post to https://www.reddit.com/r/recruiting/submit (NO links, pure value):
+
+Title: The one small change that doubled my InMail response rates (and it's embarrassingly simple)
+
+Body:
+I spent years writing cold outreach that led with the job. 'Hi [Name], I have an exciting opportunity at...' — you know the template. Response rates were dismal and I kept blaming the market.
+
+Then I started leading with something specific about the *person* before mentioning any role. Not fake specific like 'I loved your profile!' but actually referencing a project they shipped, a skill progression I noticed, or a career transition that seemed intentional.
+
+Example swap:
+
+**Before:** 'Hi Sarah, I'm recruiting for a Senior PM role and your background caught my eye.'
+
+**After:** 'Hi Sarah, noticed you moved from engineering into PM about 3 years ago — that's a path I rarely see and it usually signals someone who builds very differently than most.'
+
+Same job pitch follows, but now there's a reason they should trust my read on the opportunity.
+
+The extra 90 seconds of research per message was worth it. People can smell a mail merge from a mile away in 2024.
+
+Curious what's actually working for everyone else right now — are you finding that candidates are more or less responsive than a year ago? And has anyone cracked the code on reaching passive candidates who are genuinely happy where they are?
+
+After posting paste the URL here.
+**Re-run:** `python distribute.py`
+**Status:** PENDING
+
+## [2026-05-07 01:46] Reddit warmup post Day 2 — r/ChatGPTPromptEngineering
+**Action required:** Post to https://www.reddit.com/r/ChatGPTPromptEngineering/submit (NO links, pure value):
+
+Title: The prompt variable that transformed my cold outreach drafts from generic to actually good
+
+Body:
+Been experimenting with AI-generated recruiter cold outreach for a few months and finally cracked something that made a real difference.
+
+Most people prompt with something like: *'Write a cold outreach message for a software engineer role.'*
+
+The output is always painfully generic. So I started adding a variable I call `{{genuine_hook}}` — a single sentence I write manually that captures *one specific thing* about that candidate (a project, a career pivot, a talk they gave).
+
+The full structure I use now:
+
+
+Role: Recruiter reaching out cold
+Candidate context: {{role}}, {{years_exp}}, {{genuine_hook}}
+Tone: Conversational, no corporate fluff
+Constraints: Under 100 words, no 'I came across your profile', end with a low-friction question
+Goal: Curiosity, not conversion
+
+
+That `{{genuine_hook}}` slot forces ME to do the research first, then lets the AI handle structure and tone. The outputs went from embarrassing to something I'd actually send.
+
+The constraint layer matters too — without 'no corporate fluff' you get word salad every time.
+
+Curious what variables others are using in their outreach prompts. Anyone found a constraint that dramatically improved output quality?
+
+After posting paste the URL here.
+**Re-run:** `python distribute.py`
+**Status:** PENDING

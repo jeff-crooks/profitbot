@@ -5,7 +5,7 @@ __pycache__/
 validation/
 prompts/
 assets/*.png
-logs/
+logs/*.txt
 landing_url.txt
 compliance_notes.txt
 .pytest_cache/
