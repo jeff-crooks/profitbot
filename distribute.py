@@ -238,17 +238,28 @@ def run_distribution() -> None:
             if action["action"] == "reddit_warmup_post":
                 subreddit = subreddits[day_offset % len(subreddits)]
                 content = generate_reddit_warmup_content(niche, subreddit)
-                with BrowserSession() as session:
-                    url = post_to_reddit(session.page, subreddit, content["title"], content["body"])
-                log_action(label, "reddit", f"Warmup post on r/{subreddit}", url)
-                post_delay()
+                log_item(
+                    f"Reddit warmup post — r/{subreddit}",
+                    f"Post the following to https://www.reddit.com/r/{subreddit}/submit (no links, pure value):\n\n"
+                    f"Title: {content['title']}\n\n"
+                    f"Body:\n{content['body']}\n\n"
+                    f"After posting, paste the post URL back and run: python3 distribute.py",
+                    "distribute.py",
+                )
+                log_action(label, "reddit", f"Warmup post content logged for r/{subreddit}", "")
 
             elif action["action"] == "reddit_value_post":
                 subreddit = subreddits[day_offset % len(subreddits)]
                 content = generate_reddit_value_content(niche, subreddit, landing_url)
-                with BrowserSession() as session:
-                    url = post_to_reddit(session.page, subreddit, content["title"], content["body"])
-                log_action(label, "reddit", f"Value post on r/{subreddit}", url)
+                log_item(
+                    f"Reddit value post — r/{subreddit}",
+                    f"Post the following to https://www.reddit.com/r/{subreddit}/submit:\n\n"
+                    f"Title: {content['title']}\n\n"
+                    f"Body:\n{content['body']}\n\n"
+                    f"After posting, paste the post URL back and run: python3 distribute.py",
+                    "distribute.py",
+                )
+                log_action(label, "reddit", f"Value post content logged for r/{subreddit}", "")
                 post_delay()
 
             elif action["action"] == "post_x_thread":
