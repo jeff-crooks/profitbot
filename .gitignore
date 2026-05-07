@@ -4,7 +4,7 @@ __pycache__/
 *.pyc
 validation/
 prompts/
-assets/
+assets/*.png
 logs/
 manual_work.md
 landing_url.txt
